@@ -6,6 +6,9 @@ const QRCode = require("qrcode");
 const bcrypt = require("bcryptjs");
 const nodemailer = require("nodemailer");
 
+const dns = require("dns");
+dns.setDefaultResultOrder("ipv4first");
+
 const User = require("../models/User");
 const Certificate = require("../models/Certificate");
 const AuditLog = require("../models/AuditLog");
