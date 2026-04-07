@@ -428,7 +428,46 @@ router.patch("/reset-requests/:id/approve", auth, allow("issuer", "admin"), asyn
     user.passwordHash = passwordHash;
     await user.save();
 
-    await transporter.sendMail({
+router.patch("/reset-requests/:id/approve", auth, allow("issuer", "admin"), async (req, res) => {
+  try {
+    const request = await PasswordResetRequest.findById(req.params.id);
+    if (!request) {
+      return res.status(404).json({ message: "Request not found" });
+    }
+
+    const user = await User.findOne({
+      username: request.username,
+      email: request.email,
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const newPassword = `Temp${Math.floor(100000 + Math.random() * 900000)}`;
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+
+    user.passwordHash = passwordHash;
+    await user.save();
+
+    deleteIfExists(request.idImageUrl);
+    deleteIfExists(request.selfieImageUrl);
+
+    await PasswordResetRequest.findByIdAndDelete(request._id);
+
+    await AuditLog.create({
+      action: "password_reset_approved",
+      actorId: req.user.id,
+      actorUsername: req.user.username,
+      targetUserId: user._id,
+      details: `Approved password reset for ${user.username}`,
+    });
+
+    res.json({
+      message: `Password reset approved. Email is being sent to ${user.email}`,
+    });
+
+    transporter.sendMail({
       from: process.env.EMAIL_USER,
       to: user.email,
       subject: "BlockCert Password Reset Approved",
@@ -439,7 +478,14 @@ router.patch("/reset-requests/:id/approve", auth, allow("issuer", "admin"), asyn
         <p><strong>Temporary Password:</strong> ${newPassword}</p>
         <p>Please log in and change it as soon as possible.</p>
       `,
+    }).catch((err) => {
+      console.error("Email failed:", err);
     });
+
+  } catch (err) {
+    res.status(500).json({ message: err.message || "Failed to approve reset" });
+  }
+});
 
     deleteIfExists(request.idImageUrl);
     deleteIfExists(request.selfieImageUrl);
