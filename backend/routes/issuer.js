@@ -4,10 +4,7 @@ const path = require("path");
 const crypto = require("crypto");
 const QRCode = require("qrcode");
 const bcrypt = require("bcryptjs");
-const nodemailer = require("nodemailer");
-
-const dns = require("dns");
-dns.setDefaultResultOrder("ipv4first");
+const { Resend } = require("resend");
 
 const User = require("../models/User");
 const Certificate = require("../models/Certificate");
@@ -24,17 +21,7 @@ const {
 } = require("../services/blockchainService");
 
 const router = express.Router();
-
-const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 587,
-  secure: false,
-  family: 4,
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 const deleteIfExists = (filename) => {
   if (!filename) return;
@@ -428,28 +415,6 @@ router.patch("/reset-requests/:id/approve", auth, allow("issuer", "admin"), asyn
     user.passwordHash = passwordHash;
     await user.save();
 
-router.patch("/reset-requests/:id/approve", auth, allow("issuer", "admin"), async (req, res) => {
-  try {
-    const request = await PasswordResetRequest.findById(req.params.id);
-    if (!request) {
-      return res.status(404).json({ message: "Request not found" });
-    }
-
-    const user = await User.findOne({
-      username: request.username,
-      email: request.email,
-    });
-
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    const newPassword = `Temp${Math.floor(100000 + Math.random() * 900000)}`;
-    const passwordHash = await bcrypt.hash(newPassword, 10);
-
-    user.passwordHash = passwordHash;
-    await user.save();
-
     deleteIfExists(request.idImageUrl);
     deleteIfExists(request.selfieImageUrl);
 
@@ -463,47 +428,34 @@ router.patch("/reset-requests/:id/approve", auth, allow("issuer", "admin"), asyn
       details: `Approved password reset for ${user.username}`,
     });
 
-    res.json({
-      message: `Password reset approved. Email is being sent to ${user.email}`,
-    });
-
-    transporter.sendMail({
-      from: process.env.EMAIL_USER,
-      to: user.email,
+    const { data, error } = await resend.emails.send({
+      from: process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev",
+      to: [user.email],
       subject: "BlockCert Password Reset Approved",
       html: `
         <h2>Password Reset Approved</h2>
-        <p>Hello ${user.fullName},</p>
+        <p>Hello ${user.fullName || user.username},</p>
         <p>Your BlockCert password reset request has been approved.</p>
         <p><strong>Temporary Password:</strong> ${newPassword}</p>
         <p>Please log in and change it as soon as possible.</p>
       `,
-    }).catch((err) => {
-      console.error("Email failed:", err);
+      text: `Hello ${user.fullName || user.username}, your BlockCert password reset request has been approved. Your temporary password is: ${newPassword}. Please log in and change it as soon as possible.`,
     });
 
-  } catch (err) {
-    res.status(500).json({ message: err.message || "Failed to approve reset" });
-  }
-});
-
-    deleteIfExists(request.idImageUrl);
-    deleteIfExists(request.selfieImageUrl);
-
-    await PasswordResetRequest.findByIdAndDelete(request._id);
-
-    await AuditLog.create({
-      action: "password_reset_approved",
-      actorId: req.user.id,
-      actorUsername: req.user.username,
-      targetUserId: user._id,
-      details: `Approved password reset for ${user.username}`,
-    });
+    if (error) {
+      console.error("Resend error:", error);
+      return res.status(500).json({
+        message: "Password was reset but email failed to send",
+        error: error.message,
+      });
+    }
 
     res.json({
       message: `Password reset approved and emailed to ${user.email}`,
+      emailResult: data,
     });
   } catch (err) {
+    console.error("Approve reset error:", err);
     res.status(500).json({ message: err.message || "Failed to approve reset" });
   }
 });
