@@ -209,16 +209,17 @@ router.post(
   upload.single("certificateFile"),
   async (req, res) => {
     try {
-      const {
-        userId,
-        recipientName,
-        course,
-        dateIssued,
-        issuerName,
-        schoolName,
-      } = req.body;
+    const {
+      userId,
+      recipientName,
+      course,
+      dateIssued,
+      issuerName,
+      schoolName,
+      certificateNumber,
+    } = req.body;
 
-      if (!userId || !recipientName || !course || !dateIssued || !issuerName) {
+      if (!userId || !recipientName || !course || !dateIssued || !issuerName || !certificateNumber) {
         return res.status(400).json({
           message: "Missing required certificate fields",
         });
@@ -250,8 +251,15 @@ router.post(
         return res.status(400).json({ message: "Generated certificate file is required" });
       }
 
-      const certificateNumber = await getUniqueCertificateNumber();
-      const certificateFileUrl = req.file.filename;
+      const existingCertificateNumber = await Certificate.findOne({ certificateNumber });
+
+      if (existingCertificateNumber) {
+        return res.status(400).json({
+          message: "Certificate number already exists. Please regenerate and try again.",
+        });
+      }
+
+const certificateFileUrl = req.file.filename;
 
       const uploadedFilePath = path.join(__dirname, "..", "uploads", req.file.filename);
       const fileBuffer = fs.readFileSync(uploadedFilePath);

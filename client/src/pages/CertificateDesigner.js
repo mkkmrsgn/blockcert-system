@@ -9,6 +9,10 @@ const generateCertNumber = () => {
   return `CERT-${year}-${random}`;
 };
 
+const getVerifyUrl = (certificateNumber) => {
+  return `${window.location.origin}/verify/${certificateNumber}`;
+};
+
 export default function CertificateDesigner() {
   const previewRef = useRef(null);
 
@@ -63,6 +67,8 @@ export default function CertificateDesigner() {
     () => templateStyles[form.template] || templateStyles.formalBlue,
     [form.template]
   );
+
+  const verifyUrl = getVerifyUrl(form.certificateNumber);
 
   useEffect(() => {
     const fetchApprovedUsers = async () => {
@@ -164,6 +170,7 @@ export default function CertificateDesigner() {
       formData.append("schoolName", form.schoolName);
       formData.append("description", form.description);
       formData.append("template", form.template);
+      formData.append("certificateNumber", form.certificateNumber);
       formData.append("certificateFile", certificateFile);
 
       const res = await axios.post(
@@ -177,12 +184,97 @@ export default function CertificateDesigner() {
         }
       );
 
-      setMessage(res.data?.message || "Certificate assigned successfully.");
+      setMessage(
+  `${res.data?.message || "Certificate assigned successfully."}\nCertificate Number: ${res.data?.certificate?.certificateNumber || form.certificateNumber}`
+);
     } catch (err) {
       setMessage(err.response?.data?.message || "Failed to assign certificate");
     } finally {
       setAssigning(false);
     }
+  };
+
+  const handleDownloadCertificate = async () => {
+    try {
+      setMessage("");
+
+      if (!previewRef.current) {
+        setMessage("Certificate preview is not ready.");
+        return;
+      }
+
+      const blob = await toBlob(previewRef.current, {
+        cacheBust: true,
+        pixelRatio: 2,
+        backgroundColor: activeTemplate.bg,
+      });
+
+      if (!blob) {
+        setMessage("Failed to generate certificate image.");
+        return;
+      }
+
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${form.certificateNumber}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      setMessage("Failed to download certificate.");
+    }
+  };
+
+  const handlePrintCertificate = () => {
+    if (!previewRef.current) {
+      setMessage("Certificate preview is not ready.");
+      return;
+    }
+
+    const printContents = previewRef.current.outerHTML;
+    const printWindow = window.open("", "_blank", "width=1200,height=900");
+
+    if (!printWindow) {
+      setMessage("Popup blocked. Please allow popups for printing.");
+      return;
+    }
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Print Certificate</title>
+          <style>
+            body {
+              margin: 0;
+              padding: 20px;
+              background: #ffffff;
+              font-family: Arial, sans-serif;
+            }
+            .certificate-preview {
+              width: 100%;
+              margin: 0 auto;
+            }
+            img {
+              max-width: 100%;
+            }
+            @media print {
+              body {
+                padding: 0;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          ${printContents}
+        </body>
+      </html>
+    `);
+
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
   };
 
   const handleReset = () => {
@@ -337,6 +429,7 @@ export default function CertificateDesigner() {
           border: 1px solid rgba(255,255,255,0.12);
           color: #fff;
           font-size: 14px;
+          white-space: pre-line;
         }
 
         select option {
@@ -405,6 +498,14 @@ export default function CertificateDesigner() {
           <div className="designer-actions">
             <button type="button" className="designer-button" onClick={handleAssignCertificate} disabled={assigning}>
               {assigning ? "Uploading..." : "Upload to User"}
+            </button>
+
+            <button type="button" className="designer-button secondary" onClick={handleDownloadCertificate}>
+              Download
+            </button>
+
+            <button type="button" className="designer-button secondary" onClick={handlePrintCertificate}>
+              Print
             </button>
 
             <button type="button" className="designer-button secondary" onClick={handleReset}>
@@ -702,6 +803,58 @@ export default function CertificateDesigner() {
                 }}
               >
                 {form.schoolName || "School / Organization"}
+              </div>
+
+              <div
+                style={{
+                  marginTop: "24px",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "flex-end",
+                  gap: "20px",
+                  flexWrap: "wrap",
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: "13px",
+                    color: "#64748b",
+                    lineHeight: 1.6,
+                    maxWidth: "320px",
+                  }}
+                >
+                  Scan this QR code to verify the authenticity of this certificate through the BlockCert verification page.
+                </div>
+
+                <div
+                  style={{
+                    background: "#fff",
+                    padding: "10px",
+                    borderRadius: "10px",
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.12)",
+                    textAlign: "center",
+                  }}
+                >
+                  <img
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(verifyUrl)}`}
+                    alt="Certificate QR Code"
+                    style={{
+                      width: "120px",
+                      height: "120px",
+                      display: "block",
+                    }}
+                  />
+                  <div
+                    style={{
+                      marginTop: "6px",
+                      fontSize: "11px",
+                      color: "#475569",
+                      fontWeight: 600,
+                    }}
+                  >
+                    Scan to Verify
+                  </div>
+                </div>
               </div>
             </div>
           </div>
