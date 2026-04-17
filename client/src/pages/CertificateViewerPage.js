@@ -30,6 +30,22 @@ export default function CertificateViewerPage() {
     return () => document.removeEventListener("contextmenu", disableRightClick);
   }, []);
 
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const handleDownload = () => {
+    if (!certificate?.certificateFileUrl) return;
+
+    const fileUrl = `${API_URL}/uploads/${certificate.certificateFileUrl}`;
+    const link = document.createElement("a");
+    link.href = fileUrl;
+    link.download = certificate.certificateFileUrl;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   if (error) {
     return (
       <ThemeShell
@@ -89,6 +105,24 @@ export default function CertificateViewerPage() {
           word-break: break-word;
           line-height: 1.7;
         }
+
+        @media print {
+          nav,
+          .nav-links,
+          .no-print {
+            display: none !important;
+          }
+
+          body {
+            background: #fff !important;
+          }
+
+          .card {
+            box-shadow: none !important;
+            border: none !important;
+            background: #fff !important;
+          }
+        }
       `}</style>
 
       {certificate ? (
@@ -115,11 +149,18 @@ export default function CertificateViewerPage() {
 
                 <div className="viewer-label" style={{ marginTop: "14px" }}>Date Issued</div>
                 <div className="viewer-value">
-                  {new Date(certificate.issuedAt).toLocaleString()}
+                  {new Date(certificate.issuedAt).toLocaleString("en-PH", {
+                    timeZone: "Asia/Manila",
+                  })}
                 </div>
 
-                <div className="viewer-label" style={{ marginTop: "14px" }}>Hash</div>
+                <div className="viewer-label" style={{ marginTop: "14px" }}>Certificate Hash</div>
                 <div className="viewer-value small">{certificate.certificateHash}</div>
+
+                <div className="viewer-label" style={{ marginTop: "14px" }}>Blockchain TX</div>
+                <div className="viewer-value small">
+                  {certificate.blockchainTxHash || "No transaction hash available"}
+                </div>
               </div>
             </div>
           </div>
@@ -153,8 +194,15 @@ export default function CertificateViewerPage() {
         <div className="message">Loading certificate...</div>
       )}
 
-      <div className="nav-links" style={{ marginTop: "24px" }}>
+      <div className="nav-links no-print" style={{ marginTop: "24px" }}>
+        <button onClick={handlePrint}>Print Certificate</button>
 
+        {certificate?.certificateFileUrl && (
+          <button onClick={handleDownload}>Download Certificate</button>
+        )}
+
+        <Link to={`/verify/${certificateNumber}`} className="btn">Back to Verification</Link>
+        <Link to="/" className="btn">Home</Link>
       </div>
     </ThemeShell>
   );

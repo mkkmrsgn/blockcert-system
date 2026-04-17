@@ -9,6 +9,16 @@ const generateCertNumber = () => {
   return `CERT-${year}-${random}`;
 };
 
+const getPhilippineDate = () => {
+  const now = new Date();
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Manila",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(now);
+};
+
 const getVerifyUrl = (certificateNumber) => {
   return `${window.location.origin}/verify/${certificateNumber}`;
 };
@@ -27,7 +37,7 @@ export default function CertificateDesigner() {
     title: "Certificate of Completion",
     recipientName: "",
     course: "",
-    dateIssued: "",
+    dateIssued: getPhilippineDate(),
     issuerName: "",
     schoolName: "BlockCert Driving Academy",
     certificateNumber: generateCertNumber(),
@@ -185,8 +195,10 @@ export default function CertificateDesigner() {
       );
 
       setMessage(
-  `${res.data?.message || "Certificate assigned successfully."}\nCertificate Number: ${res.data?.certificate?.certificateNumber || form.certificateNumber}`
-);
+        `${res.data?.message || "Certificate assigned successfully."}\nCertificate Number: ${
+          res.data?.certificate?.certificateNumber || form.certificateNumber
+        }`
+      );
     } catch (err) {
       setMessage(err.response?.data?.message || "Failed to assign certificate");
     } finally {
@@ -285,7 +297,7 @@ export default function CertificateDesigner() {
       title: "Certificate of Completion",
       recipientName: "",
       course: "",
-      dateIssued: "",
+      dateIssued: getPhilippineDate(),
       issuerName: "",
       schoolName: "BlockCert Driving Academy",
       certificateNumber: generateCertNumber(),
@@ -475,40 +487,113 @@ export default function CertificateDesigner() {
           </select>
 
           <div className="designer-section-title">Certificate Details</div>
-          <input name="title" value={form.title} onChange={handleChange} placeholder="Certificate Title" style={styles.input} />
-          <input name="recipientName" value={form.recipientName} onChange={handleChange} placeholder="Recipient Name" style={styles.input} />
-          <input name="course" value={form.course} onChange={handleChange} placeholder="Course / Program" style={styles.input} />
-          <input name="dateIssued" value={form.dateIssued} onChange={handleChange} placeholder="Date Issued" style={styles.input} />
+          <input
+            name="title"
+            value={form.title}
+            onChange={handleChange}
+            placeholder="Certificate Title"
+            style={styles.input}
+          />
+          <input
+            name="recipientName"
+            value={form.recipientName}
+            onChange={handleChange}
+            placeholder="Recipient Name"
+            style={styles.input}
+          />
+          <input
+            name="course"
+            value={form.course}
+            onChange={handleChange}
+            placeholder="Course / Program"
+            style={styles.input}
+          />
+          <input
+            type="date"
+            name="dateIssued"
+            value={form.dateIssued}
+            onChange={handleChange}
+            style={styles.input}
+          />
 
           <label style={styles.label}>Certificate Number (Auto Generated)</label>
-          <input value={form.certificateNumber} readOnly style={{ ...styles.input, opacity: 0.78, cursor: "not-allowed" }} />
+          <input
+            value={form.certificateNumber}
+            readOnly
+            style={{ ...styles.input, opacity: 0.78, cursor: "not-allowed" }}
+          />
 
           <div className="designer-section-title">Issuer Details</div>
-          <input name="issuerName" value={form.issuerName} onChange={handleChange} placeholder="Issuer Name" style={styles.input} />
-          <input name="schoolName" value={form.schoolName} onChange={handleChange} placeholder="School / Organization" style={styles.input} />
-          <textarea name="description" value={form.description} onChange={handleChange} placeholder="Certificate body text" style={{ ...styles.input, minHeight: "110px", resize: "vertical" }} />
+          <input
+            name="issuerName"
+            value={form.issuerName}
+            onChange={handleChange}
+            placeholder="Issuer Name"
+            style={styles.input}
+          />
+          <input
+            name="schoolName"
+            value={form.schoolName}
+            onChange={handleChange}
+            placeholder="School / Organization"
+            style={styles.input}
+          />
+          <textarea
+            name="description"
+            value={form.description}
+            onChange={handleChange}
+            placeholder="Certificate body text"
+            style={{ ...styles.input, minHeight: "110px", resize: "vertical" }}
+          />
 
           <div className="designer-section-title">Branding</div>
           <label style={styles.label}>Upload Logo</label>
-          <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, "logoUrl")} style={styles.fileInput} />
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(e) => handleImageUpload(e, "logoUrl")}
+            style={styles.fileInput}
+          />
 
           <label style={styles.label}>Upload Signature</label>
-          <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, "signatureUrl")} style={styles.fileInput} />
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(e) => handleImageUpload(e, "signatureUrl")}
+            style={styles.fileInput}
+          />
 
           <div className="designer-actions">
-            <button type="button" className="designer-button" onClick={handleAssignCertificate} disabled={assigning}>
+            <button
+              type="button"
+              className="designer-button"
+              onClick={handleAssignCertificate}
+              disabled={assigning}
+            >
               {assigning ? "Uploading..." : "Upload to User"}
             </button>
 
-            <button type="button" className="designer-button secondary" onClick={handleDownloadCertificate}>
+            <button
+              type="button"
+              className="designer-button secondary"
+              onClick={handleDownloadCertificate}
+            >
               Download
             </button>
 
-            <button type="button" className="designer-button secondary" onClick={handlePrintCertificate}>
+            <button
+              type="button"
+              className="designer-button secondary"
+              onClick={handlePrintCertificate}
+            >
               Print
             </button>
 
-            <button type="button" className="designer-button secondary" onClick={handleReset}>
+            <button
+              type="button"
+              className="designer-button secondary"
+              onClick={handleReset}
+            >
               Reset
             </button>
           </div>
@@ -720,7 +805,7 @@ export default function CertificateDesigner() {
                       fontWeight: 600,
                     }}
                   >
-                    {form.dateIssued || "MM/DD/YYYY"}
+                    {form.dateIssued || "YYYY-MM-DD"}
                   </div>
                 </div>
 
@@ -836,7 +921,9 @@ export default function CertificateDesigner() {
                   }}
                 >
                   <img
-                    src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(verifyUrl)}`}
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(
+                      verifyUrl
+                    )}`}
                     alt="Certificate QR Code"
                     style={{
                       width: "120px",
