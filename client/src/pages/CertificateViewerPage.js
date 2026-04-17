@@ -149,8 +149,11 @@ export default function CertificateViewerPage() {
 
                 <div className="viewer-label" style={{ marginTop: "14px" }}>Date Issued</div>
                 <div className="viewer-value">
-                  {new Date(certificate.issuedAt).toLocaleString("en-PH", {
+                  {new Date(certificate.issuedAt).toLocaleDateString("en-PH", {
                     timeZone: "Asia/Manila",
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
                   })}
                 </div>
 
